@@ -42,8 +42,21 @@ const client = new Client(
     capabilities: {},
   }
 );
+await client.connect(transport);
 const tools = await client.listTools();
-console.log("Tools:", tools);
+console.log(
+  "Tools:",
+  tools.tools.map((t) => t.name)
+);
+await client.close();
+```
+
+```zsh
+bun run mcp-server-wrapper-client
+$ bun run src/mcp-server-wrapper/example-client/example-client.ts
+Tools: [ "puppeteer_navigate", "puppeteer_screenshot", "puppeteer_click", "puppeteer_fill",
+  "puppeteer_evaluate"
+]
 ```
 
 ### Step 3: Make the MCP server server
