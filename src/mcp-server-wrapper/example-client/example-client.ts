@@ -12,8 +12,15 @@ const client = new Client(
     capabilities: {},
   }
 );
+
+console.time("Connection");
 await client.connect(transport);
+console.timeEnd("Connection");
+
+console.time("List Tools");
 const tools = await client.listTools();
+console.timeEnd("List Tools");
+
 console.log(
   "Tools:",
   tools.tools.map((t) => t.name)

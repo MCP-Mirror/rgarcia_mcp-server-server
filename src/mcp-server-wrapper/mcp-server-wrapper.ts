@@ -35,10 +35,12 @@ async function main() {
       open(ws) {
         const sessionId = randomUUID();
         l.debug(`open[${sessionId}]`);
+        const startTime = performance.now();
         const child = spawn(options.command[0], options.command.slice(1), {
           env: { ...process.env, ...options.env },
           stdio: ["pipe", "pipe", "pipe"],
         });
+        const spawnTime = performance.now() - startTime;
         const cl = childProcessLogger(child.pid);
         child.stderr.on("data", (data) => {
           cl.error(data.toString());
@@ -48,7 +50,11 @@ async function main() {
         const stdin = new PassThrough();
         stdin.pipe(child.stdin);
         ws.data = { childProcess: child, stdin, sessionId };
-        l.info(`started process with PID ${child.pid} (session: ${sessionId})`);
+        l.info(
+          `started process with PID ${
+            child.pid
+          } (session: ${sessionId}) in ${spawnTime.toFixed(2)}ms`
+        );
 
         // stdout of the MCP server is a message to the client
         child.stdout.on("data", (data) => {

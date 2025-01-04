@@ -1,6 +1,6 @@
 # mcp-server-server
 
-This repo is a proof of concept MCP server that lets you spin up ... other MCP servers.
+This repo is a proof of concept MCP server that exposes another stdio MCP server over a websocket.
 
 ## But...why?
 
@@ -11,10 +11,11 @@ This has downsides:
 
 1. It's cumbersome--every MCP client needs to be a process manager now. The way you [configure Claude Desktop](https://modelcontextprotocol.io/quickstart#installation) to use MCP servers is a good demonstration of this--it needs a list of processes to run.
 2. It creates an infra problem: if you have many users, all of which require different MCP server configurations (e.g. they all have different credentials for underlying MCP servers like Github, Google Drive, etc.), then you now have tons of processes to operate and route client requests to.
+3. It's slow: the default way to spin up an MCP server is `npx ...` or `uvx ...` which comes with all of the slowness of these tools (2-3s spinup times are normal).
 
 ## A better way
 
-What if MCP servers were actually... servers? I.e. communication with them happened over the network instead of stdio?
+What if MCP servers were actually... servers? I.e. communication with them happened over the network instead of stdio.
 Then you could have an easier time using them programatically.
 
 ### Step 1: Convert a stdio MCP server to a websocket MCP server
@@ -22,7 +23,14 @@ Then you could have an easier time using them programatically.
 This repo contains a wrapper program that will take an existing MCP server ([here](https://github.com/modelcontextprotocol/servers/tree/main/src/) is a list of the official ones, but they're all over now) and expose it via websocket:
 
 ```zsh
-bun run mcp-server -p 3001 -- npx -y @modelcontextprotocol/server-puppeteer@latest
+bun run mcp-server-wrapper -p 3001 -- npx -y @modelcontextprotocol/server-puppeteer@latest
+```
+
+and for faster spin up times, install it and invoke it using `node` directly:
+
+```zsh
+pnpm install -g @modelcontextprotocol/server-puppeteer@latest
+bun run mcp-server-wrapper -p 3001 -- node ~/Library/pnpm/global/5/node_modules/@modelcontextprotocol/server-puppeteer/dist/index.js
 ```
 
 ### Step 2: Interact with the MCP server programatically without managing processes
@@ -59,6 +67,8 @@ Tools: [ "puppeteer_navigate", "puppeteer_screenshot", "puppeteer_click", "puppe
 ]
 ```
 
-### Step 3: Make the MCP server server
+### Step 3: Build it into a docker image
 
-TODO: We haven't solved problem 2, i.e. as an MCP client developer we still (in step 1) had to spawn a program for a specific MCP server + user configuration. What if there was a single MCP server that exposed tools to spin up
+```
+
+```
