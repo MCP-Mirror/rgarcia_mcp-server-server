@@ -1,5 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { generateDockerfile } from "./build-unikernel";
+import { determineRequiredSetups, generateDockerfile } from "./build-unikernel";
+
+describe("determineRequiredSetups", () => {
+  test("correctly identifies Python-only setup", () => {
+    const config = {
+      mcpServers: {
+        fetch: {
+          command: "uvx",
+          args: ["@modelcontextprotocol/server-fetch"],
+        },
+      },
+    };
+
+    const { needsPython, needsNode } = determineRequiredSetups(config);
+    expect(needsPython).toBe(true);
+    expect(needsNode).toBe(false);
+  });
+});
 
 describe("generateDockerfile", () => {
   test("generates correct Dockerfile for Python/UV setup", () => {
@@ -26,9 +43,11 @@ describe("generateDockerfile", () => {
     expect(dockerfile).toContain(
       "RUN curl -LsSf https://astral.sh/uv/install.sh | sh"
     );
-    expect(dockerfile).toContain('ENV PATH="/root/.cargo/bin:$PATH"');
-    expect(dockerfile).toContain("RUN uv venv");
-    expect(dockerfile).toContain('ENV PATH="/venv/bin:$PATH"');
+    expect(dockerfile).toContain('ENV PATH="/root/.local/bin:$PATH"');
+
+    // Check UV tool installation
+    expect(dockerfile).toContain("Pre-install UV tools");
+    expect(dockerfile).toContain("RUN uv tool install mcp-server-fetch");
 
     // Should not contain Node setup
     expect(dockerfile).not.toContain("Install Node.js");
@@ -66,10 +85,10 @@ describe("generateDockerfile", () => {
 
     // Should not contain Python setup
     expect(dockerfile).not.toContain("python3");
-    expect(dockerfile).not.toContain("uv venv");
+    expect(dockerfile).not.toContain("uv tool install");
   });
 
-  test("generates correct Dockerfile for both Python and Node setup with multiple npx packages", () => {
+  test("generates correct Dockerfile for both Python and Node setup with multiple packages", () => {
     const config = {
       mcpServers: {
         fetch: {
@@ -101,8 +120,11 @@ describe("generateDockerfile", () => {
     expect(dockerfile).toContain(
       "RUN curl -LsSf https://astral.sh/uv/install.sh | sh"
     );
-    expect(dockerfile).toContain('ENV PATH="/root/.cargo/bin:$PATH"');
-    expect(dockerfile).toContain("RUN uv venv");
+    expect(dockerfile).toContain('ENV PATH="/root/.local/bin:$PATH"');
+
+    // Check UV tool installation
+    expect(dockerfile).toContain("Pre-install UV tools");
+    expect(dockerfile).toContain("mcp-server-fetch");
 
     // Check Node.js setup with multiple packages
     expect(dockerfile).toContain("Install Node.js and npm");

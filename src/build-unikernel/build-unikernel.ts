@@ -30,10 +30,15 @@ export function determineRequiredSetups(config: Config): {
 export function generateDockerfile(config: Config): string {
   const { needsPython, needsNode } = determineRequiredSetups(config);
 
-  // Collect all npm packages that need to be installed
+  // Collect all packages that need to be installed
   const npmPackages = needsNode
     ? Object.values(config.mcpServers)
         .filter((server) => server.command === "npx")
+        .map((server) => server.args[0])
+    : [];
+  const uvTools = needsPython
+    ? Object.values(config.mcpServers)
+        .filter((server) => server.command === "uvx")
         .map((server) => server.args[0])
     : [];
 
@@ -49,9 +54,14 @@ RUN apt-get update && apt-get install -y curl wget unzip\n`;
 # Install Python and UV
 RUN apt-get install -y python3 python3-venv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:\$PATH"
-RUN uv venv
-ENV PATH="/venv/bin:\$PATH"\n`;
+ENV PATH="/root/.local/bin:\$PATH"\n`;
+
+    // Add UV tool installations if any
+    if (uvTools.length > 0) {
+      dockerfile += `
+# Pre-install UV tools
+RUN uv tool install ${uvTools.join(" ")}\n`;
+    }
   }
 
   // Add Node.js setup if needed

@@ -1,23 +1,27 @@
 FROM debian:bookworm-slim
 
+WORKDIR /usr/app
+
 RUN apt-get update && apt-get install -y curl wget unzip
 
-# Install Node.js and npm
-RUN apt-get install -y nodejs npm
+# Install Python and UV
+RUN apt-get install -y python3 python3-venv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 
-# Install global npm packages
-RUN npm install -g @modelcontextprotocol/server-puppeteer
+# Pre-install UV tools
+RUN uv tool install mcp-server-fetch
 
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash 
 ENV PATH="/root/.bun/bin:$PATH"
 
 # Copy package files
-COPY package*.json /usr/app/
-COPY bun.lockb /usr/app/
-RUN cd /usr/app && bun install
+COPY package*.json .
+COPY bun.lockb .
+RUN bun install
 
 # Copy the application
-COPY . /usr/app/
+COPY . .
 
 ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts"]

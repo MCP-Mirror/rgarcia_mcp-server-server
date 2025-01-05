@@ -69,6 +69,23 @@ Tools: [ "puppeteer_navigate", "puppeteer_screenshot", "puppeteer_click", "puppe
 
 ### Step 3: Build it into a docker image
 
+For a given MCP server configuration, e.g.
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
+  }
+}
 ```
+
+We'd like to build it into a docker image that exposes a websocket, that we can run anywhere.
+This repo contains a script that will output a Dockerfile for a given MCP server configuration:
+
+```bash
+
 
 ```
