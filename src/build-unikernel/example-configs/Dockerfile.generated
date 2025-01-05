@@ -1,0 +1,23 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y curl wget unzip
+
+# Install Node.js and npm
+RUN apt-get install -y nodejs npm
+
+# Install global npm packages
+RUN npm install -g @modelcontextprotocol/server-puppeteer
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash 
+ENV PATH="/root/.bun/bin:$PATH"
+
+# Copy package files
+COPY package*.json /usr/app/
+COPY bun.lockb /usr/app/
+RUN cd /usr/app && bun install
+
+# Copy the application
+COPY . /usr/app/
+
+ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts"]
