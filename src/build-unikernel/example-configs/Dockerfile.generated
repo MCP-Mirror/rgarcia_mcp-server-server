@@ -30,4 +30,21 @@ RUN bun install
 # Copy the application
 COPY . .
 
-ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts"]
+# Embed the config file
+COPY <<'ENDCONFIG' /usr/app/config/mcp-config.json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}
+
+ENDCONFIG
+
+ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts", "-p", "3001", "/usr/app/config/mcp-config.json"]

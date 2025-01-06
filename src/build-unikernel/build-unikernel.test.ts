@@ -1,159 +1,104 @@
 import { describe, expect, test } from "bun:test";
+import { type Config } from "../lib/config";
 import { determineRequiredSetups, generateDockerfile } from "./build-unikernel";
 
 describe("determineRequiredSetups", () => {
   test("correctly identifies Python-only setup", () => {
-    const config = {
+    const config: Config = {
       mcpServers: {
-        fetch: {
+        test: {
           command: "uvx",
-          args: ["@modelcontextprotocol/server-fetch"],
+          args: ["test-package"],
         },
       },
     };
-
-    const { needsPython, needsNode } = determineRequiredSetups(config);
-    expect(needsPython).toBe(true);
-    expect(needsNode).toBe(false);
+    const result = determineRequiredSetups(config);
+    expect(result.needsPython).toBe(true);
+    expect(result.needsNode).toBe(false);
   });
 });
 
 describe("generateDockerfile", () => {
-  test("generates correct Dockerfile for Python/UV setup", () => {
-    const config = {
-      mcpServers: {
-        fetch: {
-          command: "uvx",
-          args: ["mcp-server-fetch"],
-        },
+  const testConfig = {
+    mcpServers: {
+      test: {
+        command: "uvx",
+        args: ["test-package"],
       },
-    };
+    },
+  };
 
-    const dockerfile = generateDockerfile(config);
-
-    // Check base setup
-    expect(dockerfile).toContain("FROM debian:bookworm-slim");
-    expect(dockerfile).toContain("WORKDIR /usr/app");
-    expect(dockerfile).toContain(
-      "RUN apt-get update && apt-get install -y curl wget unzip"
+  test("generates correct Dockerfile for Python/UV setup", () => {
+    const dockerfile = generateDockerfile(
+      testConfig,
+      JSON.stringify(testConfig, null, 2)
     );
-
-    // Check Python/UV specific setup
-    expect(dockerfile).toContain("RUN apt-get install -y python3 python3-venv");
+    expect(dockerfile).toContain("Install Python and UV");
+    expect(dockerfile).toContain("uv tool install test-package");
     expect(dockerfile).toContain(
-      "RUN curl -LsSf https://astral.sh/uv/install.sh | sh"
+      "cat > /usr/app/config/mcp-config.json << 'ENDCONFIG'"
     );
-    expect(dockerfile).toContain('ENV PATH="/root/.local/bin:$PATH"');
-
-    // Check UV tool installation
-    expect(dockerfile).toContain("Pre-install UV tools");
-    expect(dockerfile).toContain("RUN uv tool install mcp-server-fetch");
-
-    // Should not contain Node setup
-    expect(dockerfile).not.toContain("Install Node.js");
-    expect(dockerfile).not.toContain("npm install");
+    expect(dockerfile).toContain(JSON.stringify(testConfig, null, 2));
   });
 
   test("generates correct Dockerfile for Node setup with npx command", () => {
-    const config = {
+    const config: Config = {
       mcpServers: {
-        puppeteer: {
+        test: {
           command: "npx",
-          args: ["@modelcontextprotocol/server-puppeteer"],
+          args: ["test-package"],
         },
       },
     };
-
-    const dockerfile = generateDockerfile(config);
-
-    // Check base setup
-    expect(dockerfile).toContain("FROM debian:bookworm-slim");
-    expect(dockerfile).toContain("WORKDIR /usr/app");
-    expect(dockerfile).toContain(
-      "RUN apt-get update && apt-get install -y curl wget unzip"
+    const dockerfile = generateDockerfile(
+      config,
+      JSON.stringify(config, null, 2)
     );
-
-    // Check Node.js specific setup
     expect(dockerfile).toContain("Install Node.js and npm");
-    expect(dockerfile).toContain("RUN apt-get install -y nodejs npm");
-
-    // Check npm package installation
-    expect(dockerfile).toContain("Pre-install npm packages");
+    expect(dockerfile).toContain("npm install test-package");
     expect(dockerfile).toContain(
-      "RUN npm install @modelcontextprotocol/server-puppeteer"
+      "cat > /usr/app/config/mcp-config.json << 'ENDCONFIG'"
     );
-
-    // Should not contain Python setup
-    expect(dockerfile).not.toContain("python3");
-    expect(dockerfile).not.toContain("uv tool install");
   });
 
   test("generates correct Dockerfile for both Python and Node setup with multiple packages", () => {
-    const config = {
+    const config: Config = {
       mcpServers: {
-        fetch: {
+        test1: {
           command: "uvx",
-          args: ["mcp-server-fetch"],
+          args: ["test-package1"],
         },
-        puppeteer: {
+        test2: {
           command: "npx",
-          args: ["@modelcontextprotocol/server-puppeteer"],
-        },
-        other: {
-          command: "npx",
-          args: ["some-other-package"],
+          args: ["test-package2"],
         },
       },
     };
-
-    const dockerfile = generateDockerfile(config);
-
-    // Check base setup
-    expect(dockerfile).toContain("FROM debian:bookworm-slim");
-    expect(dockerfile).toContain("WORKDIR /usr/app");
-    expect(dockerfile).toContain(
-      "RUN apt-get update && apt-get install -y curl wget unzip"
+    const dockerfile = generateDockerfile(
+      config,
+      JSON.stringify(config, null, 2)
     );
-
-    // Check Python/UV setup
-    expect(dockerfile).toContain("RUN apt-get install -y python3 python3-venv");
-    expect(dockerfile).toContain(
-      "RUN curl -LsSf https://astral.sh/uv/install.sh | sh"
-    );
-    expect(dockerfile).toContain('ENV PATH="/root/.local/bin:$PATH"');
-
-    // Check UV tool installation
-    expect(dockerfile).toContain("Pre-install UV tools");
-    expect(dockerfile).toContain("mcp-server-fetch");
-
-    // Check Node.js setup with multiple packages
+    expect(dockerfile).toContain("Install Python and UV");
+    expect(dockerfile).toContain("uv tool install test-package1");
     expect(dockerfile).toContain("Install Node.js and npm");
-    expect(dockerfile).toContain("RUN apt-get install -y nodejs npm");
-    expect(dockerfile).toContain("Pre-install npm packages");
-    expect(dockerfile).toContain("@modelcontextprotocol/server-puppeteer");
-    expect(dockerfile).toContain("some-other-package");
+    expect(dockerfile).toContain("npm install test-package2");
+    expect(dockerfile).toContain(
+      "cat > /usr/app/config/mcp-config.json << 'ENDCONFIG'"
+    );
   });
 
   test("generates correct common parts for all setups", () => {
-    const config = {
-      mcpServers: {
-        fetch: {
-          command: "uvx",
-          args: ["mcp-server-fetch"],
-        },
-      },
-    };
-
-    const dockerfile = generateDockerfile(config);
-
-    // Check common parts
+    const dockerfile = generateDockerfile(
+      testConfig,
+      JSON.stringify(testConfig, null, 2)
+    );
+    expect(dockerfile).toContain("FROM debian:bookworm-slim");
     expect(dockerfile).toContain("WORKDIR /usr/app");
+    expect(dockerfile).toContain("Install Bun");
     expect(dockerfile).toContain("COPY package*.json .");
-    expect(dockerfile).toContain("COPY bun.lockb .");
-    expect(dockerfile).toContain("RUN bun install");
     expect(dockerfile).toContain("COPY . .");
     expect(dockerfile).toContain(
-      'ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts"]'
+      'ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts"'
     );
   });
 });

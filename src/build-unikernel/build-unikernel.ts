@@ -15,7 +15,10 @@ export function determineRequiredSetups(config: Config): {
   };
 }
 
-export function generateDockerfile(config: Config): string {
+export function generateDockerfile(
+  config: Config,
+  configContent: string
+): string {
   const { needsPython, needsNode } = determineRequiredSetups(config);
 
   // Collect all packages that need to be installed
@@ -66,7 +69,7 @@ RUN npm install ${npmPackages.join(" ")}\n`;
     }
   }
 
-  // Add the common parts with Bun installation
+  // Add the common parts with Bun installation and embedded config
   dockerfile += `
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash 
@@ -80,7 +83,12 @@ RUN bun install
 # Copy the application
 COPY . .
 
-ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts"]`;
+# Embed the config file
+COPY <<'ENDCONFIG' /usr/app/config/mcp-config.json
+${configContent}
+ENDCONFIG
+
+ENTRYPOINT ["bun", "/usr/app/src/mcp-server-wrapper/mcp-server-wrapper.ts", "-p", "3001", "/usr/app/config/mcp-config.json"]`;
 
   return dockerfile;
 }
@@ -94,6 +102,7 @@ async function main() {
 
   const configPath = args[0];
   try {
+    const configContent = await Bun.file(configPath).text();
     const config = await loadConfig(configPath);
 
     // Validate that all commands are supported
@@ -108,7 +117,7 @@ async function main() {
       process.exit(1);
     }
 
-    const dockerfile = generateDockerfile(config);
+    const dockerfile = generateDockerfile(config, configContent);
     const outputPath = path.join(
       path.dirname(configPath),
       "Dockerfile.generated"
