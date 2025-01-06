@@ -1,18 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { z } from "zod";
-
-// Define the MCP server configuration schema
-const MCPServerConfigSchema = z.object({
-  command: z.string(),
-  args: z.array(z.string()),
-});
-
-const ConfigSchema = z.object({
-  mcpServers: z.record(z.string(), MCPServerConfigSchema),
-});
-
-type Config = z.infer<typeof ConfigSchema>;
+import { type Config, loadConfig } from "../lib/config";
 
 export function determineRequiredSetups(config: Config): {
   needsPython: boolean;
@@ -54,7 +42,7 @@ RUN apt-get update && apt-get install -y curl wget unzip\n`;
 # Install Python and UV
 RUN apt-get install -y python3 python3-venv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:\$PATH"\n`;
+ENV PATH="/root/.local/bin:$PATH"\n`;
 
     // Add UV tool installations if any
     if (uvTools.length > 0) {
@@ -82,7 +70,7 @@ RUN npm install ${npmPackages.join(" ")}\n`;
   dockerfile += `
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash 
-ENV PATH="/root/.bun/bin:\$PATH"
+ENV PATH="/root/.bun/bin:$PATH"
 
 # Copy package files
 COPY package*.json .
@@ -106,9 +94,7 @@ async function main() {
 
   const configPath = args[0];
   try {
-    const configContent = await fs.readFile(configPath, "utf-8");
-    const configJson = JSON.parse(configContent);
-    const config = ConfigSchema.parse(configJson);
+    const config = await loadConfig(configPath);
 
     // Validate that all commands are supported
     const unsupportedCommands = Object.values(config.mcpServers)
@@ -130,11 +116,7 @@ async function main() {
     await fs.writeFile(outputPath, dockerfile);
     console.log(`Generated Dockerfile at: ${outputPath}`);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error("Invalid configuration format:", error.errors);
-    } else {
-      console.error("Error:", error);
-    }
+    console.error("Error:", error);
     process.exit(1);
   }
 }

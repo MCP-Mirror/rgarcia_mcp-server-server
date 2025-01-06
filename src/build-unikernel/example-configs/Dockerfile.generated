@@ -12,6 +12,12 @@ ENV PATH="/root/.local/bin:$PATH"
 # Pre-install UV tools
 RUN uv tool install mcp-server-fetch
 
+# Install Node.js and npm
+RUN apt-get install -y nodejs npm
+
+# Pre-install npm packages
+RUN npm install @modelcontextprotocol/server-puppeteer
+
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash 
 ENV PATH="/root/.bun/bin:$PATH"

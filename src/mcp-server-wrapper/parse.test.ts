@@ -1,37 +1,40 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { parseCommandLineArgs } from "./parse";
 
 describe("parseCommandLineArgs", () => {
-  it("should parse default values when no arguments are provided", () => {
-    const options = parseCommandLineArgs([]);
+  test("should parse default port when only config path provided", () => {
+    const options = parseCommandLineArgs(["config.json"]);
     expect(options.port).toBe(3000);
-    expect(options.env).toEqual({});
-    expect(options.command).toEqual([]);
+    expect(options.configPath).toBe("config.json");
   });
 
-  it("should parse port and environment variables correctly", () => {
-    const options = parseCommandLineArgs([
-      "-p",
-      "8080",
-      "-e",
-      "VAR1=value1",
-      "-e",
-      "VAR2=value2",
-      "command1",
-      "command2",
-    ]);
+  test("should parse port and config path correctly", () => {
+    const options = parseCommandLineArgs(["-p", "8080", "config.json"]);
     expect(options.port).toBe(8080);
-    expect(options.env).toEqual({ VAR1: "value1", VAR2: "value2" });
-    expect(options.command).toEqual(["command1", "command2"]);
+    expect(options.configPath).toBe("config.json");
+
+    const options2 = parseCommandLineArgs(["--port", "9000", "config.json"]);
+    expect(options2.port).toBe(9000);
+    expect(options2.configPath).toBe("config.json");
   });
 
-  it("should handle multiple environment variable inputs", () => {
-    const options = parseCommandLineArgs([
-      "-e",
-      "VAR1=value1",
-      "-e",
-      "VAR2=value2",
-    ]);
-    expect(options.env).toEqual({ VAR1: "value1", VAR2: "value2" });
+  test("should handle config path before port flag", () => {
+    const options = parseCommandLineArgs(["config.json", "-p", "8080"]);
+    expect(options.port).toBe(8080);
+    expect(options.configPath).toBe("config.json");
+  });
+
+  test("should error on missing config path", () => {
+    expect(() => parseCommandLineArgs(["-p", "8080"])).toThrow();
+  });
+
+  test("should error on invalid port", () => {
+    expect(() =>
+      parseCommandLineArgs(["-p", "invalid", "config.json"])
+    ).toThrow();
+  });
+
+  test("should error on unknown flag", () => {
+    expect(() => parseCommandLineArgs(["-x", "config.json"])).toThrow();
   });
 });

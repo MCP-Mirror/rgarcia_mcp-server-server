@@ -1,53 +1,39 @@
-import { parseArgs } from "util";
-
-interface ProgramOptions {
+export type Options = {
   port: number;
-  env: Record<string, string>;
-  command: string[];
-}
+  configPath: string;
+};
 
-function parseEnvironmentVariables(
-  envInputs: string[]
-): Record<string, string> {
-  const result: Record<string, string> = {};
+export function parseCommandLineArgs(args: string[]): Options {
+  const options: Options = {
+    port: 3000,
+    configPath: "",
+  };
 
-  for (const input of envInputs) {
-    // Handle space-delimited list of VAR=value pairs
-    const pairs = input.split(" ");
-
-    for (const pair of pairs) {
-      const [key, value] = pair.split("=");
-      if (key && value) {
-        result[key] = value;
-      }
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    switch (arg) {
+      case "-p":
+      case "--port":
+        if (i + 1 >= args.length) {
+          throw new Error("Missing port number");
+        }
+        const port = parseInt(args[++i]);
+        if (isNaN(port)) {
+          throw new Error(`Invalid port number: ${args[i]}`);
+        }
+        options.port = port;
+        break;
+      default:
+        if (arg.startsWith("-")) {
+          throw new Error(`Unknown option: ${arg}`);
+        }
+        options.configPath = arg;
     }
   }
 
-  return result;
-}
+  if (!options.configPath) {
+    throw new Error("No config file path provided");
+  }
 
-export function parseCommandLineArgs(args: string[]): ProgramOptions {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      port: {
-        type: "string",
-        short: "p",
-        default: "3000",
-      },
-      env: {
-        type: "string",
-        short: "e",
-        multiple: true,
-        default: [],
-      },
-    },
-    strict: true,
-    allowPositionals: true,
-  });
-  return {
-    port: parseInt(values.port as string, 10),
-    env: parseEnvironmentVariables(values.env as string[]),
-    command: positionals,
-  };
+  return options;
 }

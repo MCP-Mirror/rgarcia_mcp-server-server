@@ -2,7 +2,7 @@
   "mcpServers": {
     "fetch": {
       "command": "uvx",
-      "args": ["@modelcontextprotocol/server-fetch"]
+      "args": ["mcp-server-fetch"]
     },
     "puppeteer": {
       "command": "npx",
